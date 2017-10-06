@@ -1,0 +1,122 @@
+object Neop extends App {
+
+  def neophyte {
+
+    case class Email( subject: String,
+                      text: String,
+                      sender: String,
+                      recipient: String)
+    type EmailFilter = Email => Boolean
+    def newMailsForUser(mails: Seq[Email], f: EmailFilter) = mails.filter(f)
+
+    val sentByOneOf: (Set[String]) => EmailFilter = senders => email => senders.contains(email.sender)
+    //    def sentByOneOf (senders: Set[String], email: Email): EmailFilter =  email => senders.contains(email.sender)
+    //    def sentByOneOf (senders: Set[String]): EmailFilter =  email => senders.contains(email.sender)
+
+    val notSentByAnyOf: Set[String] => EmailFilter = senders => email => !senders.contains(email.sender)
+
+    //    val emailFilter: EmailFilter = notSentByAnyOf(Set("johndoe@example.com"))
+    val emailFilter: EmailFilter = sentByOneOf(Set("johndoe@example.com"))
+
+    type SizeChecker = Int => Boolean
+    val sizeConstraint: SizeChecker => EmailFilter = f => email => f(email.text.length)
+    val minimumSize: Int => EmailFilter = n => sizeConstraint(_ >= n)
+    //        val maximumSize: Int => EmailFilter = n => sizeConstraint(_ <= n)
+    def maximumSize: Int => EmailFilter = n => sizeConstraint(_ <= n)
+
+    //    val minimumSize: Int => EmailFilter = n => (email => email.text.length >= n)
+    //    val maximumSize: Int => EmailFilter = n => email => email.text.length <= n
+
+    val mails = Email(
+      subject = "It's me again, your stalker friend!",
+      text = "Hello my friend! How are you and your hand?",
+      sender = "johndoe@example.com",
+      recipient = "me@example.com") :: Nil
+
+    val res = newMailsForUser(mails, emailFilter) // возвращает пустой список
+
+    def complement[A](predicate: A => Boolean) = (a: A) => !predicate(a)
+    val notSentByAnyOfShort = sentByOneOf andThen(g => complement(g))
+
+    def any[A]  (predicates: (A => Boolean)*): A => Boolean = a => predicates.exists(pred => pred(a))
+    def none[A] (predicates: (A => Boolean)*) = complement(any(predicates: _*))
+    def every[A](predicates: (A => Boolean)*) = none(predicates.view.map(complement(_)): _*)
+
+    val filter: EmailFilter = every(
+      notSentByAnyOf(Set("johndoe@example.com")),
+      minimumSize(100),
+      maximumSize(10000)
+    )
+
+    //    val f: Future[String] = Future { "Hello world!" }
+
+    val addMissingSubject = (email: Email) =>
+      if (email.subject.isEmpty) email.copy(subject = "No subject")
+      else email
+
+    val checkSpelling = (email: Email) =>
+      email.copy(text = email.text.replaceAll("your", "you're"))
+
+    val removeInappropriateLanguage = (email: Email) =>
+      email.copy(text = email.text.replaceAll("dynamic typing", "**CENSORED**"))
+
+    val addAdvertismentToFooter = (email: Email) =>
+      email.copy(text = email.text + "\nThis mail sent via Super Awesome Free Mail")
+
+    val pipeline = Function.chain(Seq( addMissingSubject,
+      checkSpelling,  removeInappropriateLanguage,  addAdvertismentToFooter))
+
+    val testEmail = mails.head
+    val pipeline2 = addMissingSubject.andThen(checkSpelling).andThen(removeInappropriateLanguage).andThen(addAdvertismentToFooter)
+
+    println("neophyte")
+    println(res)
+    println(res.size)
+    println("pipeline "  + pipeline(mails.head))
+    println("pipeline2 " + pipeline2(mails.head))
+
+    val res2 = newMailsForUser(mails, filter)
+    println("res2 ", res)
+
+    //--------------------------CH.11
+
+    type IntPairPred   = (Int, Int) => Boolean
+    def sizeConstraintSecond(pred: IntPairPred, n: Int, email: Email) = pred(email.text.length, n)
+
+    val gt: IntPairPred = _ >  _
+    val ge: IntPairPred = _ >= _
+    val lt: IntPairPred = _ <  _
+    val le: IntPairPred = _ <= _
+    val eq: IntPairPred = _ == _
+
+    val minimumSizePred: (Int, Email) => Boolean = sizeConstraintSecond(ge, _: Int, _: Email)
+    val maximumSizePred: (Int, Email) => Boolean = sizeConstraintSecond(le, _: Int, _: Email)
+
+    val sizeConstraintFn: (IntPairPred, Int, Email) => Boolean = sizeConstraintSecond _
+
+  }
+
+  def neophyteLite {
+    case class Email( subject: String, text: String, sender: String, recipient: String)
+    val mails = Email(
+      subject = "It's me again, your stalker friend!",
+      text = "Hello my friend! How are you?",
+      sender = "johndoe@example.com",
+      recipient = "me@example.com") :: Nil
+
+    def newMailsForUser(mails: Seq[Email], f: EmailFilter) = mails.filter(f)
+    type EmailFilter = Email => Boolean
+    //    val sentByOneOf: (Set[String]) => EmailFilter = senders => (email => senders.contains(email.sender))
+    def sentByOneOf (senders: Set[String]): EmailFilter =  email => senders.contains(email.sender)
+
+    val emailFilter: EmailFilter = sentByOneOf(Set("johndoe@example.com"))
+    val res = newMailsForUser(mails, emailFilter) // возвращает пустой список
+
+    println("neophyte Lite")
+    println(res)
+    println(res.size)
+  }
+
+  neophyte
+
+}
